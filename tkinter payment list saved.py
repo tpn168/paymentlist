@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import os
+import csv
 
 def submit_form():
     answer = messagebox.askquestion('Confirm Submission', 'Do you want to submit the data?')
@@ -12,11 +13,11 @@ def submit_form():
         invoice_number = invoice_number_entry.get()
         price = price_entry.get()
         currency = currency_entry.get()
+        remark = remark_entry.get()
         buy_date = buy_date_entry.get_date()
         due_date = due_date_entry.get_date()
-        remark = remark_entry.get()
 
-        tree.insert('', 'end', values=("Unpaid", vessel, vendor, invoice_number, price, currency, buy_date, due_date, remark))
+        tree.insert('', 'end', values=("Unpaid", vessel, vendor, invoice_number, price, currency, remark, buy_date, due_date))
         vessel_entry.delete(0, 'end')
         vendor_entry.delete(0, 'end')
         invoice_number_entry.delete(0, 'end')
@@ -25,21 +26,25 @@ def submit_form():
         remark_entry.delete(0, 'end')
 
 def load_data():
-    if os.path.exists('PaymentCollect.txt'):
-        with open('PaymentCollect.txt', 'r', encoding='utf-8') as f:
-            for line in f:
-                values = line.strip().split(',')
+    if os.path.exists('PaymentCollect.csv'):
+        with open('PaymentCollect.csv', 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for values in reader:
                 tree.insert('', 'end', values=("Unpaid", *values))
 
 def save_data():
-    # clear file
-    open('PaymentCollect.txt', 'w').close()
+    with open('PaymentCollect.csv', 'w', encoding='utf-8', newline='') as f:
+        writer = csv.writer(f)
+        for row in tree.get_children():
+            row_data = tree.item(row)['values']
+            writer.writerow(row_data[1:])  # Skip the first column 'Paid'
 
-    # iterate through treeview and save all rows
-    for row in tree.get_children():
-        row_data = tree.item(row)['values']
-        with open('PaymentCollect.txt', 'a', encoding='utf-8') as f:
-            f.write(','.join(str(r) for r in row_data[1:]) + '\n')
+def delete_row():
+    selected_item = tree.selection()  # get selected item
+    if selected_item:  # if item selected
+        answer = messagebox.askquestion('Delete', 'Are you sure you want to delete?')
+        if answer == 'yes':
+            tree.delete(selected_item)
 
 def status_change(value):
     tree.set(cur_item, '#1', value)
@@ -52,7 +57,7 @@ def check_uncheck(event):
         toplevel = tk.Toplevel(root)
         toplevel.title("Choose status")
         ttk.Label(toplevel, text="Choose status:").pack(pady=10, padx=10)
-        status_combobox = ttk.Combobox(toplevel, values=["Done", "Unpaid"])
+        status_combobox = ttk.Combobox(toplevel, values=["Paid", "Unpaid"])
         status_combobox.pack(pady=10, padx=10)
         status_combobox.bind("<<ComboboxSelected>>", lambda e: status_change(status_combobox.get()))
         toplevel.transient(root)
@@ -70,35 +75,54 @@ def ask_save():
 root = tk.Tk()
 root.title('Payment Lists')
 
-labels = ['Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Buy Date', 'Due Date', 'Remark']
+labels = ['Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date']
 entries = []
-frame = tk.Frame(root)  # A frame for your input boxes
+frame = tk.Frame(root)
 frame.pack()
 
 for i, label in enumerate(labels):
     lbl = tk.Label(frame, text=label)
-    lbl.grid(row=i//2, column=(i%2)*2)  # Use grid instead of pack
-    if label in ['Buy Date', 'Due Date']:  # DateEntry for dates
+    lbl.grid(row=i//2, column=(i%2)*2)
+    if label in ['Buy Date', 'Due Date']:
         entry = DateEntry(frame)
-    else:  # normal Entry for other fields
+    else:
         entry = tk.Entry(frame)
-    entry.grid(row=i//2, column=(i%2)*2+1)  # Use grid instead of pack
+    entry.grid(row=i//2, column=(i%2)*2+1)
     entries.append(entry)
 
-vessel_entry, vendor_entry, invoice_number_entry, price_entry, currency_entry, buy_date_entry, due_date_entry, remark_entry = entries
+vessel_entry, vendor_entry, invoice_number_entry, price_entry, currency_entry, remark_entry, buy_date_entry, due_date_entry = entries
 
 submit_button = tk.Button(root, text="Submit", command=submit_form, bg='#d3d3d3', fg='#800080')
 submit_button.pack()
 
-columns = ('Paid', 'Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Buy Date', 'Due Date', 'Remark')
+columns = ('Paid', 'Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date')
 tree = ttk.Treeview(root, columns=columns, show='headings')
+
+# Set column fonts to bold and set background color to a color other than white.
+style = ttk.Style(root)
+style.configure("Treeview.Heading", font=(None, 10, 'bold'))
+style.configure("Treeview", background="lightgray")  # Change 'lightgray' to color of your choice.
 
 for column in columns:
     tree.heading(column, text=column)
 
-tree.pack()
+tree.pack(fill='both', expand=True)  # Pack treeview widget to fill the entire root window.
 
 tree.bind("<Double-1>", check_uncheck)
+
+# Create a right-click menu using a Menu widget
+popup = tk.Menu(root, tearoff=0)
+popup.add_command(label="Delete", command=delete_row)  # Add delete option to the menu
+
+def do_popup(event):
+    # display the popup menu
+    try:
+        popup.tk_popup(event.x_root, event.y_root, 0)
+    finally:
+        # make sure to release the grab (Tk 8.0a1 only)
+        popup.grab_release()
+
+tree.bind("<Button-3>", do_popup)  # Bind right click to do_popup
 
 load_data()
 
