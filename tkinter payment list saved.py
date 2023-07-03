@@ -30,14 +30,14 @@ def load_data():
         with open('PaymentCollect.csv', 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
             for values in reader:
-                tree.insert('', 'end', values=("Unpaid", *values))
+                tree.insert('', 'end', values=values)
 
 def save_data():
     with open('PaymentCollect.csv', 'w', encoding='utf-8', newline='') as f:
         writer = csv.writer(f)
         for row in tree.get_children():
             row_data = tree.item(row)['values']
-            writer.writerow(row_data[1:])  # Skip the first column 'Paid'
+            writer.writerow(row_data)  # Save the whole row, including 'Paid' column
 
 def delete_row():
     selected_item = tree.selection()  # get selected item
@@ -75,13 +75,14 @@ def ask_save():
 root = tk.Tk()
 root.title('Payment Lists')
 
+
 labels = ['Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date']
 entries = []
 frame = tk.Frame(root)
 frame.pack()
 
 for i, label in enumerate(labels):
-    lbl = tk.Label(frame, text=label)
+    lbl = tk.Label(frame, text=label, font=("Arial", 14, 'bold'))  # Increase font size here
     lbl.grid(row=i//2, column=(i%2)*2)
     if label in ['Buy Date', 'Due Date']:
         entry = DateEntry(frame)
@@ -95,7 +96,7 @@ vessel_entry, vendor_entry, invoice_number_entry, price_entry, currency_entry, r
 submit_button = tk.Button(root, text="Submit", command=submit_form, bg='#d3d3d3', fg='#800080')
 submit_button.pack()
 
-columns = ('Paid', 'Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date')
+columns = ('Status', 'Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date')
 tree = ttk.Treeview(root, columns=columns, show='headings')
 
 # Set column fonts to bold and set background color to a color other than white.
