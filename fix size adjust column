@@ -6,7 +6,6 @@ import csv
 
 def submit_form():
     answer = messagebox.askquestion('Confirm Submission', 'Do you want to submit the data?')
-
     if answer == 'yes':
         vessel = vessel_entry.get()
         vendor = vendor_entry.get()
@@ -16,7 +15,6 @@ def submit_form():
         remark = remark_entry.get()
         buy_date = buy_date_entry.get_date()
         due_date = due_date_entry.get_date()
-
         tree.insert('', 'end', values=("Unpaid", vessel, vendor, invoice_number, price, currency, remark, buy_date, due_date))
         vessel_entry.delete(0, 'end')
         vendor_entry.delete(0, 'end')
@@ -66,15 +64,20 @@ def check_uncheck(event):
 
 def ask_save():
     answer = messagebox.askquestion('Save data', 'Do you want to save data before closing?')
-
     if answer == 'yes':
         save_data()
-
     root.destroy()
 
-root = tk.Tk()
-root.title('Payment Lists')
+def column_width_adjustment(event):
+    width = tree.winfo_width()
+    width -= 20  # Adjust for possible scrollbar
+    num_columns = len(tree["columns"])
+    for column in tree["columns"]:
+        tree.column(column, width=width//num_columns)
 
+root = tk.Tk()
+root.geometry('1200x800')
+root.title('Payment Lists')
 
 labels = ['Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date']
 entries = []
@@ -99,31 +102,28 @@ submit_button.pack()
 columns = ('Status', 'Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date')
 tree = ttk.Treeview(root, columns=columns, show='headings')
 
-# Set column fonts to bold and set background color to a color other than white.
 style = ttk.Style(root)
 style.configure("Treeview.Heading", font=(None, 10, 'bold'))
-style.configure("Treeview", background="lightgray")  # Change 'lightgray' to color of your choice.
+style.configure("Treeview", background="lightgray")
 
 for column in columns:
     tree.heading(column, text=column)
 
-tree.pack(fill='both', expand=True)  # Pack treeview widget to fill the entire root window.
+tree.pack(fill='both', expand=True)
 
 tree.bind("<Double-1>", check_uncheck)
+tree.bind("<Configure>", column_width_adjustment)
 
-# Create a right-click menu using a Menu widget
 popup = tk.Menu(root, tearoff=0)
-popup.add_command(label="Delete", command=delete_row)  # Add delete option to the menu
+popup.add_command(label="Delete", command=delete_row)
 
 def do_popup(event):
-    # display the popup menu
     try:
         popup.tk_popup(event.x_root, event.y_root, 0)
     finally:
-        # make sure to release the grab (Tk 8.0a1 only)
         popup.grab_release()
 
-tree.bind("<Button-3>", do_popup)  # Bind right click to do_popup
+tree.bind("<Button-3>", do_popup)
 
 load_data()
 
