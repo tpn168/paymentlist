@@ -105,7 +105,7 @@ def validate_price(*args):
 
 # Create the main window
 root = tk.Tk()
-root.geometry('1200x800')
+root.geometry('800x600')
 root.title('Payment Lists')
 
 # Create the form fields
