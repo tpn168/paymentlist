@@ -1,21 +1,31 @@
+# Importing the necessary libraries
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import os
 import csv
+import re
+from datetime import datetime
 
+# Function to handle form submission
 def submit_form():
+    # Confirm submission
     answer = messagebox.askquestion('Confirm Submission', 'Do you want to submit the data?')
     if answer == 'yes':
+        # Retrieve values from form fields
         vessel = vessel_entry.get()
         vendor = vendor_entry.get()
         invoice_number = invoice_number_entry.get()
         price = price_entry.get()
         currency = currency_entry.get()
         remark = remark_entry.get()
-        buy_date = buy_date_entry.get_date()
-        due_date = due_date_entry.get_date()
+        buy_date = datetime.strftime(buy_date_entry.get_date(), "%d/%m/%Y")
+        due_date = datetime.strftime(due_date_entry.get_date(), "%d/%m/%Y")
+
+        # Insert values into treeview
         tree.insert('', 'end', values=("Unpaid", vessel, vendor, invoice_number, price, currency, remark, buy_date, due_date))
+
+        # Clear form fields
         vessel_entry.delete(0, 'end')
         vendor_entry.delete(0, 'end')
         invoice_number_entry.delete(0, 'end')
@@ -23,6 +33,7 @@ def submit_form():
         currency_entry.delete(0, 'end')
         remark_entry.delete(0, 'end')
 
+# Function to load data from CSV into treeview
 def load_data():
     if os.path.exists('PaymentCollect.csv'):
         with open('PaymentCollect.csv', 'r', encoding='utf-8') as f:
@@ -30,6 +41,7 @@ def load_data():
             for values in reader:
                 tree.insert('', 'end', values=values)
 
+# Function to save data from treeview into CSV
 def save_data():
     with open('PaymentCollect.csv', 'w', encoding='utf-8', newline='') as f:
         writer = csv.writer(f)
@@ -37,6 +49,7 @@ def save_data():
             row_data = tree.item(row)['values']
             writer.writerow(row_data)  # Save the whole row, including 'Paid' column
 
+# Function to delete selected row from treeview
 def delete_row():
     selected_item = tree.selection()  # get selected item
     if selected_item:  # if item selected
@@ -44,9 +57,11 @@ def delete_row():
         if answer == 'yes':
             tree.delete(selected_item)
 
+# Function to change status of a payment
 def status_change(value):
     tree.set(cur_item, '#1', value)
 
+# Function to handle checkbox selection
 def check_uncheck(event):
     global cur_item
     cur_item = tree.identify_row(event.y)
@@ -62,12 +77,14 @@ def check_uncheck(event):
         toplevel.grab_set()
         root.wait_window(toplevel)
 
+# Function to handle closing of the application
 def ask_save():
     answer = messagebox.askquestion('Save data', 'Do you want to save data before closing?')
     if answer == 'yes':
         save_data()
     root.destroy()
 
+# Function to adjust column width
 def column_width_adjustment(event):
     width = tree.winfo_width()
     width -= 20  # Adjust for possible scrollbar
@@ -75,58 +92,88 @@ def column_width_adjustment(event):
     for column in tree["columns"]:
         tree.column(column, width=width//num_columns)
 
+# Function to validate price input
+def validate_price(*args):
+    value = price_var.get()
+    if value:
+        if not re.match("^\d{1,8}(\.\d{0,2})?$", value):
+            corrected_value = ''.join(filter(lambda x: x.isdigit() or x == '.', value))  
+            corrected_value = corrected_value.rstrip('.')  
+            if corrected_value.count('.') == 1 and len(corrected_value.split('.')[1]) > 2:
+                corrected_value = f'{float(corrected_value):.2f}'
+            price_var.set(corrected_value)
+
+# Create the main window
 root = tk.Tk()
 root.geometry('1200x800')
 root.title('Payment Lists')
 
+# Create the form fields
 labels = ['Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date']
 entries = []
 frame = tk.Frame(root)
 frame.pack()
 
 for i, label in enumerate(labels):
-    lbl = tk.Label(frame, text=label, font=("Arial", 14, 'bold'))  # Increase font size here
+    lbl = tk.Label(frame, text=label, font=("Arial", 14, 'bold'))  
     lbl.grid(row=i//2, column=(i%2)*2)
     if label in ['Buy Date', 'Due Date']:
-        entry = DateEntry(frame)
+        entry = DateEntry(frame, date_pattern='dd/mm/yyyy')
+    elif label == 'Price':
+        price_var = tk.StringVar(root)
+        price_var.trace('w', validate_price)
+        entry = tk.Entry(frame, textvariable=price_var)
     else:
         entry = tk.Entry(frame)
     entry.grid(row=i//2, column=(i%2)*2+1)
     entries.append(entry)
 
+# Unpack entries into individual variables
 vessel_entry, vendor_entry, invoice_number_entry, price_entry, currency_entry, remark_entry, buy_date_entry, due_date_entry = entries
 
+# Create submit button
 submit_button = tk.Button(root, text="Submit", command=submit_form, bg='#d3d3d3', fg='#800080')
 submit_button.pack()
 
+# Create the treeview
 columns = ('Status', 'Vessel', 'Vendor', 'Invoice Number', 'Price', 'Currency', 'Remark', 'Buy Date', 'Due Date')
 tree = ttk.Treeview(root, columns=columns, show='headings')
 
+# Configure the style of the treeview
 style = ttk.Style(root)
 style.configure("Treeview.Heading", font=(None, 10, 'bold'))
 style.configure("Treeview", background="lightgray")
 
+# Set column headings
 for column in columns:
     tree.heading(column, text=column)
 
+# Pack treeview
 tree.pack(fill='both', expand=True)
 
+# Bind events to treeview
 tree.bind("<Double-1>", check_uncheck)
 tree.bind("<Configure>", column_width_adjustment)
 
+# Create popup menu for right-click on treeview
 popup = tk.Menu(root, tearoff=0)
 popup.add_command(label="Delete", command=delete_row)
 
+# Function to show popup
 def do_popup(event):
     try:
         popup.tk_popup(event.x_root, event.y_root, 0)
     finally:
         popup.grab_release()
 
+# Bind right-click event to treeview
 tree.bind("<Button-3>", do_popup)
 
+# Load data from CSV into treeview
 load_data()
 
+# Handle window close event
 root.protocol('WM_DELETE_WINDOW', ask_save)
 
+# Start the Tkinter event loop
 root.mainloop()
