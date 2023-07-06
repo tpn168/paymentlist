@@ -16,7 +16,11 @@ def submit_form():
         vessel = vessel_entry.get()
         vendor = vendor_entry.get()
         invoice_number = invoice_number_entry.get()
-        price = price_entry.get()
+        price = float(price_entry.get())  # Get price as a float
+        if price.is_integer():
+            price = "{:,}".format(int(price)).replace(",", "،")  # Format integer price
+        else:
+            price = "{:,.2f}".format(price).replace(",", "،")  # Format float price with 2 decimals
         currency = currency_entry.get()
         remark = remark_entry.get()
         buy_date = datetime.strftime(buy_date_entry.get_date(), "%d/%m/%Y")
@@ -32,6 +36,7 @@ def submit_form():
         price_entry.delete(0, 'end')
         currency_entry.delete(0, 'end')
         remark_entry.delete(0, 'end')
+
 
 # Function to load data from CSV into treeview
 def load_data():
@@ -172,8 +177,8 @@ tree.bind("<Button-3>", do_popup)
 # Load data from CSV into treeview
 load_data()
 
-# Handle window close event
-root.protocol('WM_DELETE_WINDOW', ask_save)
+# Ask for save on closing
+root.protocol("WM_DELETE_WINDOW", ask_save)
 
-# Start the Tkinter event loop
+# Start the main event loop
 root.mainloop()
